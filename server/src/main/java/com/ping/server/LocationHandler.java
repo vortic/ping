@@ -33,17 +33,17 @@ public class LocationHandler extends HttpServlet {
         response.setContentType("application/json");
         response.addHeader("Access-Control-Allow-Origin", "*");
 
-        String id = request.getParameter("id").replace(WHITESPACE, " ");
-        if (id == null) {
-            // something went wrong--no username specified
-            return;
-        }
-        Double latitude = getDouble(request.getParameter("lat"));
-        Double longitude = getDouble(request.getParameter("long"));
-        if (latitude != null && longitude != null) {
-            locations.put(id, new Pair<>(latitude, longitude));
-        }
         try (PrintWriter out = response.getWriter()) {
+            String id = getUsername(request);
+            if (id == null) {
+                warning(String.format("no username specified for request %s--location not stored.",
+                                request));
+            }
+            Double latitude = getDouble(request.getParameter("lat"));
+            Double longitude = getDouble(request.getParameter("long"));
+            if (id != null && latitude != null && longitude != null) {
+                locations.put(id, new Pair<>(latitude, longitude));
+            }
             JsonObject positions = new JsonObject();
             locations.keySet().stream().forEach(userId -> {
                 if (! userId.equals(id)) {
@@ -62,8 +62,13 @@ public class LocationHandler extends HttpServlet {
         return s == null ? null : Double.valueOf(s);
     }
 
-    private Integer getInteger(String s) {
-        return s == null ? null : Integer.valueOf(s);
+    private String getUsername(HttpServletRequest request) {
+        String s = request.getParameter("id");
+        return s == null ? null : s.replace(WHITESPACE, " ");
+    }
+
+    private void warning(String string) {
+        System.out.println("WARNING: " + string);
     }
 
     // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">

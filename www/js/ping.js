@@ -31,10 +31,9 @@ function ping(myLocation) {
     var client = new HttpClient();
     client.get("http://localhost:8080/ping", positionUrl(myLocation), function(json) {
         var positions = JSON.parse(json);
-        var markers = [];
         for (var id in positions) {
             var position = positions[id];
-            markers.push(app.placePerson({
+            app.placePerson({
                 position: {
                     coords: {
                         latitude: position.latitude,
@@ -42,13 +41,14 @@ function ping(myLocation) {
                     }
                 },
                 title: id
-            }));
-        }
-        if (markers.length) {
-            var bounds = new maps.LatLngBounds();
-            markers.forEach(function(marker) {
-                bounds.extend(marker.getPosition());
             });
+        }
+        if (Object.keys(app.markers).length && Object.keys(app.markers)[0] !== myName) {
+            var bounds = new maps.LatLngBounds();
+            for (var id in app.markers) {
+                var marker = app.markers[id];
+                bounds.extend(marker.getPosition());
+            }
             app.map.fitBounds(bounds);
         }
         setStatus("Successfully pinged the server"
@@ -70,6 +70,8 @@ var myPosition;
 var myName;
 
 var app = {
+    map: null, // google.maps.Map
+    markers: null, // a hash of google.maps.Marker objects
     // Application Constructor
     initialize: function() {
         this.bindEvents();
@@ -86,6 +88,7 @@ var app = {
             zoom: 12,
             mapTypeId: maps.MapTypeId.ROADMAP
         });
+        app.markers = {};
     },
     // Bind Event Listeners
     //
@@ -142,12 +145,17 @@ var app = {
             app.map.setCenter(pos);
         }
 
-        var marker = new maps.Marker({
-            position: pos,
-            map: app.map,
-            icon: params.icon,
-            title: params.title
-        });
+        if (params.title in app.markers) {
+            app.markers[params.title].setPosition(pos);
+        } else {
+            app.markers[params.title] = new maps.Marker({
+                position: pos,
+                map: app.map,
+                icon: params.icon,
+                title: params.title
+            });
+        }
+        var marker = app.markers[params.title];
 
         var geocoder = new maps.Geocoder();
         geocoder.geocode({ latLng: pos }, function(results, status) {
