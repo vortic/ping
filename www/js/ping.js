@@ -84,6 +84,9 @@ var app = {
         document.getElementById('refresh').onclick = function() {
             ping(myPosition);
         };
+        document.getElementById('logout').onclick = function() {
+            logout();
+        };
         app.map = new maps.Map(document.getElementById('map-canvas'), {
             zoom: 12,
             mapTypeId: maps.MapTypeId.ROADMAP
@@ -189,6 +192,10 @@ function readUsernameCookie() {
             myName = cookie.substring("username=".length);
         }
     };
+}
+
+function logout() {
+    document.cookie = "username=;expires=Thu, 01 Jan 1970 00:00:00 UTC";
 }
 
 function setUsername() {

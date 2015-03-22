@@ -122,13 +122,17 @@ p {
     margin-left: auto;
 }
 
-#refresh {
+#buttons {
+    margin: 10px auto;
+}
+
+.button {
     border-radius: 4px;
     border: 1px solid black;
     width: 40px;
     height: 20px;
-    margin: 10px auto;
     cursor: pointer;
     padding: 4px;
     line-height: 20px;
+    display: inline-block;
 }
