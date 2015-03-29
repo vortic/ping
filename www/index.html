@@ -19,7 +19,10 @@
         <script src="https://maps.googleapis.com/maps/api/js"></script>
     </head>
     <body>
-        <div style="min-height: 567px;">
+        <div style="height: 100vh;">
+            <div style="overflow: hidden;">
+                <span id="name"></span>
+            </div>
             <h1>ping</h1>
             <h2>It's not clever, but at least it makes sense.</h2>
             <div id="map-canvas"></div>
@@ -33,6 +36,15 @@
                 <div id="refresh" class="button">Refresh</div>
                 <div id="logout" class="button">Logout</div>
             </div>
+            <form id="change-picture"
+                  action="http://localhost:8080/ping"
+                  method="post"
+                  enctype="multipart/form-data"
+                  target="hack">
+                <input type="file" name="file" />
+                <input type="submit" />
+            </form>
+            <iframe id="hack" name="hack"></iframe>
         </div>
         <script type="text/javascript" src="cordova.js"></script>
         <script type="text/javascript" src="js/ping.js"></script>

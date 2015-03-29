@@ -1,19 +1,26 @@
 package com.ping.server;
 
 import com.google.gson.JsonObject;
+import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.concurrent.ConcurrentHashMap;
 import javafx.util.Pair;
 import javax.servlet.ServletException;
+import javax.servlet.annotation.MultipartConfig;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.Part;
 
 /**
  *
  * @author Victor
  */
+@MultipartConfig
 public class LocationHandler extends HttpServlet {
 
     private static final String WHITESPACE = "\0";
@@ -21,7 +28,7 @@ public class LocationHandler extends HttpServlet {
             = new ConcurrentHashMap<>();
 
     /**
-     * Processes requests for both HTTP <code>GET</code> and <code>POST</code> methods.
+     * Processes requests for both HTTP <code>GET</code> methods.
      *
      * @param request servlet request
      * @param response servlet response
@@ -97,7 +104,17 @@ public class LocationHandler extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        processRequest(request, response);
+        response.setContentType("application/json");
+        response.addHeader("Access-Control-Allow-Origin", "*");
+        Part filePart = request.getPart("file");
+        if (filePart == null) {
+            warning("No image specified");
+            return;
+        }
+        File file = new File("../www/img/mugshot_tmp.jpeg");
+        try (InputStream fileContent = filePart.getInputStream()) {
+            Files.copy(fileContent, file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        }
     }
 
     /**

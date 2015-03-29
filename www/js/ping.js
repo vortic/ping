@@ -1,19 +1,20 @@
 var maps = google.maps;
 
 var HttpClient = function() {
-    this.get = function(url, content, callback, error) {
+    this.request = function(params) {
         var httpRequest = new XMLHttpRequest();
         httpRequest.onreadystatechange = function() {
             if (httpRequest.readyState === 4) {
                 if (httpRequest.status === 200) {
-                    callback(httpRequest.responseText);
+                    params.callback && params.callback(httpRequest.responseText);
                 } else {
-                    error();
+                    params.error && params.error();
                 }
             }
         };
-        httpRequest.open("GET", url + content);
-        httpRequest.send();
+        httpRequest.open(params.type, params.url + (params.type === "GET" ? params.content : ""));
+        params.setHeader && params.setHeader(httpRequest);
+        httpRequest.send(params.type === "GET" ? null : params.content);
     };
 };
 
@@ -21,41 +22,50 @@ function div(content) {
     return "<div>" + content + "</div>";
 }
 
+function setContent(id, content) {
+    document.getElementById(id).textContent = content;
+}
+
 function setStatus(message) {
-    document.getElementById("server-status").textContent = message;
+    setContent("server-status", message);
 }
 
 function ping(myLocation) {
-    myPosition = myLocation;
     setStatus("Pinging server...");
     var client = new HttpClient();
-    client.get("http://localhost:8080/ping", positionUrl(myLocation), function(json) {
-        var positions = JSON.parse(json);
-        for (var id in positions) {
-            var position = positions[id];
-            app.placePerson({
-                position: {
-                    coords: {
-                        latitude: position.latitude,
-                        longitude: position.longitude
-                    }
-                },
-                title: id
-            });
-        }
-        if (Object.keys(app.markers).length && Object.keys(app.markers)[0] !== myName) {
-            var bounds = new maps.LatLngBounds();
-            for (var id in app.markers) {
-                var marker = app.markers[id];
-                bounds.extend(marker.getPosition());
+    client.request({
+        type: "GET",
+        url: "http://localhost:8080/ping",
+        content: positionUrl(myLocation),
+        callback: function(json) {
+            var positions = JSON.parse(json);
+            for (var id in positions) {
+                var position = positions[id];
+                app.placePerson({
+                    position: {
+                        coords: {
+                            latitude: position.latitude,
+                            longitude: position.longitude
+                        }
+                    },
+                    title: id
+                });
             }
-            app.map.fitBounds(bounds);
+            if (Object.keys(app.markers).length && Object.keys(app.markers)[0] !== myName) {
+                var bounds = new maps.LatLngBounds();
+                for (var id in app.markers) {
+                    var marker = app.markers[id];
+                    bounds.extend(marker.getPosition());
+                }
+                app.map.fitBounds(bounds);
+            }
+            setStatus("Successfully pinged the server"
+                    + (myLocation ? "!" : ", but we couldn't find your location."));
+        },
+        error: function() {
+            setStatus("Could not connect to the server"
+                    + (myLocation ? ", but location loaded successfully!" : "."));
         }
-        setStatus("Successfully pinged the server"
-                + (myLocation ? "!" : ", but we couldn't find your location."));
-    }, function() {
-        setStatus("Could not connect to the server"
-                + (myLocation ? ", but location loaded successfully!" : "."));
     });
 }
 
@@ -64,9 +74,7 @@ function positionUrl(position) {
     return url + (position ? "&lat=" + position.coords.latitude + "&long=" + position.coords.longitude : "");
 }
 
-// assigned upon registration with the server
-var myPosition;
-// set upon first login--remembered via cookie
+// set upon first login--remembered via cookie and localStorage
 var myName;
 
 var app = {
@@ -82,10 +90,34 @@ var app = {
             document.getElementById('click').dispatchEvent(event);
         };
         document.getElementById('refresh').onclick = function() {
-            ping(myPosition);
+            app.findMe();
         };
         document.getElementById('logout').onclick = function() {
             logout();
+        };
+        document.getElementById('change-picture').onsubmit = function() {
+//            if (! this.file || ! this.file.value) {
+//                alert("No image specified.");
+//                return false;
+//            }
+//            var client = new HttpClient();
+//            client.request({
+//                type: "POST",
+//                url: "http://localhost:8080/ping",
+//                content: new FormData(this),
+//                setHeader: function(request) {
+//                    request.setRequestHeader("Content-Type", "multipart/form-data");
+//                },
+//                callback: function() {
+//                    if (app.markers[myName]) {
+//                        app.markers[myName].setIcon("img/mugshot.jpeg");
+//                    }
+//                },
+//                error: function() {
+//                    alert("Could not update image :(");
+//                }
+//            });
+//            return false;
         };
         app.map = new maps.Map(document.getElementById('map-canvas'), {
             zoom: 12,
@@ -125,10 +157,10 @@ var app = {
             navigator.geolocation.getCurrentPosition(function(position) {
                 app.placePerson({
                     position: position,
-                    icon: {
+                    icon: myName === "Victor" ? {
                         url: "img/mugshot.jpeg",
                         scaledSize: new maps.Size(32, 32)
-                    },
+                    } : undefined,
                     title: myName,
                     center: true
                 });
@@ -177,35 +209,20 @@ var app = {
     }
 };
 
-// writes a cookie with the supplied username, set to expire in a year
-function writeUsernameCookie(name) {
-    var d = new Date();
-    d.setTime(d.getTime() + (365 * 1000 * 60 * 60 * 24));
-    document.cookie = "username=" + name + ";expires=" + d.toUTCString();
-}
-
-function readUsernameCookie() {
-    var cookies = document.cookie.split(";");
-    for (var i = 0; i < cookies.length; i++) {
-        var cookie = cookies[i].trim();
-        if (cookie.indexOf("username=") === 0) {
-            myName = cookie.substring("username=".length);
-        }
-    };
-}
-
 function logout() {
-    document.cookie = "username=;expires=Thu, 01 Jan 1970 00:00:00 UTC";
+    window.localStorage.removeItem("username");
+    window.location.reload();
 }
 
 function setUsername() {
-    readUsernameCookie();
+    myName = window.localStorage.getItem("username");
     if (! myName) {
         while (! myName || ! myName.trim()) {
             myName = prompt("Pick a username:", "");
         }
-        writeUsernameCookie(myName);
+        window.localStorage.setItem("username", myName);
     }
+    setContent("name", myName);
 }
 
 setUsername();
