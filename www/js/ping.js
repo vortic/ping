@@ -13,7 +13,6 @@ var HttpClient = function() {
             }
         };
         httpRequest.open(params.type, params.url + (params.type === "GET" ? params.content : ""));
-        params.setHeader && params.setHeader(httpRequest);
         httpRequest.send(params.type === "GET" ? null : params.content);
     };
 };
@@ -74,7 +73,14 @@ function positionUrl(position) {
     return url + (position ? "&lat=" + position.coords.latitude + "&long=" + position.coords.longitude : "");
 }
 
-// set upon first login--remembered via cookie and localStorage
+function myIcon() {
+    return {
+        url: "img/" + myName + ".jpeg",
+        scaledSize: new maps.Size(32, 32)
+    };
+}
+
+// set upon first login--remembered via localStorage
 var myName;
 
 var app = {
@@ -96,28 +102,27 @@ var app = {
             logout();
         };
         document.getElementById('change-picture').onsubmit = function() {
-//            if (! this.file || ! this.file.value) {
-//                alert("No image specified.");
-//                return false;
-//            }
-//            var client = new HttpClient();
-//            client.request({
-//                type: "POST",
-//                url: "http://localhost:8080/ping",
-//                content: new FormData(this),
-//                setHeader: function(request) {
-//                    request.setRequestHeader("Content-Type", "multipart/form-data");
-//                },
-//                callback: function() {
-//                    if (app.markers[myName]) {
-//                        app.markers[myName].setIcon("img/mugshot.jpeg");
-//                    }
-//                },
-//                error: function() {
-//                    alert("Could not update image :(");
-//                }
-//            });
-//            return false;
+            if (! this.file || ! this.file.value) {
+                alert("No image specified.");
+                return false;
+            }
+            var data = new FormData(this);
+            data.append("name", myName);
+            var client = new HttpClient();
+            client.request({
+                type: "POST",
+                url: "http://localhost:8080/ping",
+                content: data,
+                callback: function() {
+                    if (app.markers[myName]) {
+                        app.markers[myName].setIcon(myIcon());
+                    }
+                },
+                error: function() {
+                    alert("An error occured trying to update your image. Please try again later.");
+                }
+            });
+            return false;
         };
         app.map = new maps.Map(document.getElementById('map-canvas'), {
             zoom: 12,
@@ -157,10 +162,7 @@ var app = {
             navigator.geolocation.getCurrentPosition(function(position) {
                 app.placePerson({
                     position: position,
-                    icon: myName === "Victor" ? {
-                        url: "img/mugshot.jpeg",
-                        scaledSize: new maps.Size(32, 32)
-                    } : undefined,
+                    icon: myIcon(),
                     title: myName,
                     center: true
                 });

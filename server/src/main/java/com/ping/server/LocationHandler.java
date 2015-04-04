@@ -106,12 +106,13 @@ public class LocationHandler extends HttpServlet {
             throws ServletException, IOException {
         response.setContentType("application/json");
         response.addHeader("Access-Control-Allow-Origin", "*");
+        String name = request.getParameter("name");
         Part filePart = request.getPart("file");
         if (filePart == null) {
             warning("No image specified");
             return;
         }
-        File file = new File("../www/img/mugshot_tmp.jpeg");
+        File file = new File("../www/img/" + name + ".jpeg");
         try (InputStream fileContent = filePart.getInputStream()) {
             Files.copy(fileContent, file.toPath(), StandardCopyOption.REPLACE_EXISTING);
         }
