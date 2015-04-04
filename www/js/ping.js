@@ -75,7 +75,7 @@ function positionUrl(position) {
 
 function myIcon() {
     return {
-        url: "img/" + myName + ".jpeg",
+        url: "img/" + myName + ".jpeg?hack=" + Date.now(),
         scaledSize: new maps.Size(32, 32)
     };
 }
