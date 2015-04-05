@@ -29,12 +29,28 @@ function setStatus(message) {
     setContent("server-status", message);
 }
 
+function url(path) {
+    return "http://10.0.0.2:8080/" + path;
+}
+
+function positionUrl(position) {
+    var url = "?id=" + myName.replace(" ", "\0");
+    return url + (position ? "&lat=" + position.coords.latitude + "&long=" + position.coords.longitude : "");
+}
+
+function myIcon() {
+    return {
+        url: "img/" + myName + ".jpeg?hack=" + Date.now(),
+        scaledSize: new maps.Size(32, 32)
+    };
+}
+
 function ping(myLocation) {
     setStatus("Pinging server...");
     var client = new HttpClient();
     client.request({
         type: "GET",
-        url: "http://localhost:8080/ping",
+        url: url("ping"),
         content: positionUrl(myLocation),
         callback: function(json) {
             var positions = JSON.parse(json);
@@ -68,18 +84,6 @@ function ping(myLocation) {
     });
 }
 
-function positionUrl(position) {
-    var url = "?id=" + myName.replace(" ", "\0");
-    return url + (position ? "&lat=" + position.coords.latitude + "&long=" + position.coords.longitude : "");
-}
-
-function myIcon() {
-    return {
-        url: "img/" + myName + ".jpeg?hack=" + Date.now(),
-        scaledSize: new maps.Size(32, 32)
-    };
-}
-
 // set upon first login--remembered via localStorage
 var myName;
 
@@ -95,7 +99,7 @@ var app = {
             event.eventName = 'deviceready';
             document.getElementById('click').dispatchEvent(event);
         };
-        document.getElementById('refresh').onclick = function() {
+        document.getElementById('ping').onclick = function() {
             app.findMe();
         };
         document.getElementById('logout').onclick = function() {
@@ -111,7 +115,7 @@ var app = {
             var client = new HttpClient();
             client.request({
                 type: "POST",
-                url: "http://localhost:8080/ping",
+                url: url("ping"),
                 content: data,
                 callback: function() {
                     if (app.markers[myName]) {
@@ -138,11 +142,8 @@ var app = {
         document.addEventListener('deviceready', this.onDeviceReady.bind(this), false);
     },
     // deviceready Event Handler
-    //
-    // The scope of 'this' is the event. In order to call the 'receivedEvent'
-    // function, we must explicitly call 'app.receivedEvent(...);'
     onDeviceReady: function() {
-        app.receivedEvent('deviceready');
+        this.receivedEvent('deviceready');
         this.findMe();
     },
     // Update DOM on a Received Event
@@ -178,36 +179,35 @@ var app = {
     placePerson: function(params) {
         var coords = params.position.coords;
         var pos = new maps.LatLng(coords.latitude, coords.longitude);
+        // center the map if it's the first load
         if (params.center) {
             app.map.setCenter(pos);
         }
-
+        // If the marker already exists, update its position--otherwise, create a new Marker and
+        // InfoWindow.
         if (params.title in app.markers) {
             app.markers[params.title].setPosition(pos);
         } else {
-            app.markers[params.title] = new maps.Marker({
+            var marker = app.markers[params.title] = new maps.Marker({
                 position: pos,
                 map: app.map,
                 icon: params.icon,
                 title: params.title
             });
+            var geocoder = new maps.Geocoder();
+            geocoder.geocode({ latLng: pos }, function(results, status) {
+                if (status === maps.GeocoderStatus.OK) {
+                    var infoWindow = new maps.InfoWindow({
+                        content: div(results[0].formatted_address),
+                        maxWidth: 150
+                    });
+                    maps.event.addListener(marker, 'click', function() {
+                        infoWindow.open(app.map, marker);
+                    });
+                }
+            });
         }
-        var marker = app.markers[params.title];
-
-        var geocoder = new maps.Geocoder();
-        geocoder.geocode({ latLng: pos }, function(results, status) {
-            if (status === maps.GeocoderStatus.OK) {
-                var infoWindow = new maps.InfoWindow({
-                    content: div(results[0].formatted_address),
-                    maxWidth: 150
-                });
-                maps.event.addListener(marker, 'click', function() {
-                    infoWindow.open(app.map, marker);
-                });
-            }
-        });
-
-        return marker;
+        return app.markers[params.title];
     }
 };
 
